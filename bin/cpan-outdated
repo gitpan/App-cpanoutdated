@@ -10,16 +10,20 @@ use Config;
 use version;
 use constant WIN32 => $^O eq 'MSWin32';
 
-our $VERSION = "0.04";
+our $VERSION = "0.05";
 
-my $index_url = 'http://www.cpan.org/modules/02packages.details.txt.gz';
+my $mirror = 'http://www.cpan.org/';
 my $quote = WIN32 ? q/"/ : q/'/;
 
 GetOptions(
-    'h|help'  => \my $help,
-    'verbose' => \my $verbose,
+    'h|help'     => \my $help,
+    'verbose'    => \my $verbose,
+    'm|mirror=s' => \$mirror,
 ) or pod2usage();
 pod2usage() if $help;
+
+$mirror =~ s:/$::;
+my $index_url = "${mirror}/modules/02packages.details.txt.gz";
 
 unless ($ENV{HARNESS_ACTIVE}) {
     &main;
@@ -120,6 +124,12 @@ sub init_tools {
     }
 }
 
+sub file_getstore {
+    my ($self, $uri, $path) = @_;
+    require File::Copy;
+    File::Copy::copy($uri, $path);
+}
+
 __END__
 
 =head1 NAMES
@@ -133,6 +143,9 @@ cpan-outdated - detect outdated CPAN modules in your environment
 
     # verbose
     % cpan-outdated --verbose
+
+    # alternate mirrors
+    % cpan-outdated --mirror file:///home/user/minicpan/
 
     # install with cpan
     % cpan-outdated | xargs cpan -i
