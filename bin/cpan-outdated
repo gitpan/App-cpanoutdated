@@ -10,7 +10,7 @@ use Config;
 use version;
 use constant WIN32 => $^O eq 'MSWin32';
 
-our $VERSION = "0.07";
+our $VERSION = "0.08";
 
 my $mirror = 'http://www.cpan.org/';
 my $quote = WIN32 ? q/"/ : q/'/;
@@ -45,6 +45,7 @@ sub main {
     my %seen;
     while (my $line = <$fh>) {
         my ($pkg, $version, $dist) = split /\s+/, $line;
+        next if $version eq 'undef';
         next if $dist =~ m{/perl-[0-9._]+\.tar\.gz$};
         (my $file = $pkg) =~ s!::!/!g;
         $file = "${file}.pm";
