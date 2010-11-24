@@ -10,9 +10,10 @@ use Config;
 use version;
 use LWP::Simple ();
 use IO::Zlib;
+use CPAN::DistnameInfo;
 use constant WIN32 => $^O eq 'MSWin32';
 
-our $VERSION = "0.11";
+our $VERSION = "0.12";
 
 my $mirror = 'http://www.cpan.org/';
 my $quote = WIN32 ? q/"/ : q/'/;
@@ -42,9 +43,8 @@ unless ($ENV{HARNESS_ACTIVE}) {
 sub main {
     init_tools();
 
-    if ($local_lib) {
-        setup_local_lib($local_lib, $self_contained);
-    }
+    my @libpath = make_inc($local_lib, $self_contained);
+    # warn join("\n", @libpath);
 
     my $tmpfile = File::Temp->new(UNLINK => 1, SUFFIX => '.gz');
     getstore($index_url, $tmpfile->filename) or die "Cannot getstore file";
@@ -56,15 +56,36 @@ sub main {
     }
     # body part
     my %seen;
-    while (my $line = <$fh>) {
+    my %dist_latest_version;
+    LINES: while (my $line = <$fh>) {
         my ($pkg, $version, $dist) = split /\s+/, $line;
         next if $version eq 'undef';
         next if $dist =~ m{/perl-[0-9._]+\.tar\.gz$};
         (my $file = $pkg) =~ s!::!/!g;
         $file = "${file}.pm";
-        SCAN_INC: for my $dir (@INC) {
+        SCAN_INC: for my $dir (@libpath) {
             my $path = "$dir/$file";
-            next unless -f $path;
+            next SCAN_INC unless -f $path;
+
+            # ignore old distribution.
+            #   This is a heuristic approach. It is not a strict.
+            #   If you want a strict check, cpan-outdated looks 02packages.details.txt.gz twice.
+            #   It is too slow.
+            #
+            #   But, 02packages.details.txt.gz is sorted.
+            #   Submodules are listed after main module most of the time.
+            #   This strategy works well for now.
+            # ref https://github.com/tokuhirom/cpan-outdated/issues#issue/4
+            my $info = CPAN::DistnameInfo->new($dist);
+            if (my $latest = $dist_latest_version{$info->dist}) {
+                # $info->version < $latest
+                if (compare_version($info->version, $latest)) {
+                    # warn "SKIP old distribution ($pkg): $dist < ", $latest, "\n";
+                    next LINES; # skip old version
+                }
+            }
+            $dist_latest_version{$info->dist} = $info->version;
+
             my $inst_version = parse_version($path);
                $inst_version  =~ s/\s+//; # workaround for Attribute::Params::Validate
             next if $inst_version eq 'undef';
@@ -145,6 +166,7 @@ sub print_diff {
     }
 }
 
+# return true if $inst_version is less than $version
 sub compare_version {
     my ($inst_version, $version) = @_;
     return 0 if $inst_version eq $version;
@@ -215,21 +237,24 @@ sub init_tools {
     }
 }
 
-sub setup_local_lib {
+sub make_inc {
     my ($base, $self_contained) = @_;
-    $base ||= '~/perl5/';
 
-    require local::lib;
-    if ($self_contained) {
-        @INC = (
+    if ($base) {
+        require local::lib;
+        my @modified_inc = (
             local::lib->install_base_perl_path($base),
             local::lib->install_base_arch_path($base),
-            @Config{qw(privlibexp archlibexp)},
         );
+        if ($self_contained) {
+            push @modified_inc, @Config{qw(privlibexp archlibexp)};
+        } else {
+            push @modified_inc, @INC;
+        }
+        return @modified_inc;
+    } else {
+        return @INC;
     }
-
-    local $SIG{__WARN__} = sub { }; # catch 'Attempting to write ...'
-    local::lib->import($base);
 }
 
 __END__

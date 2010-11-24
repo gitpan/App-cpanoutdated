@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               App-cpanoutdated
-version:            0.11
+version:            0.12
 abstract:           ~
 author:  []
 license:            unknown
@@ -10,9 +10,10 @@ configure_requires:
 build_requires:
     ExtUtils::MakeMaker:  0
 requires:
+    CPAN::DistnameInfo:   0.1
     ExtUtils::MakeMaker:  6.56
     IO::Zlib:             0
-    local::lib:           0
+    local::lib:           1.006008
     LWP:                  0
     version:              0
 no_index:
