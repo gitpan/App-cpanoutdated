@@ -1,0 +1,9 @@
+bin/cpan-outdated
+Changes
+lib/App/cpanoutdated.pm
+Makefile.PL
+MANIFEST			This list of files
+README.md
+t/00_compile.t
+t/01_compare_version.t
+META.yml                                 Module meta-data (added by MakeMaker)
