@@ -10,10 +10,11 @@ use version;
 use LWP::Simple ();
 use IO::Zlib;
 use CPAN::DistnameInfo;
+use Module::CoreList ();
 use Module::Metadata;
 use constant WIN32 => $^O eq 'MSWin32';
 
-our $VERSION = "0.18";
+our $VERSION = "0.22";
 
 my $mirror = 'http://www.cpan.org/';
 my $quote = WIN32 ? q/"/ : q/'/;
@@ -34,11 +35,15 @@ Getopt::Long::GetOptions(
           . "You can use 'cpan-listchanges `cpan-outdated -p`' instead.\n"
           . "cpanm cpan-listchanges # install from CPAN\n"
     },
+    'exclude-core' => \my $exclude_core,
 ) or pod2usage();
 pod2usage() if $help;
 
 $mirror =~ s:/$::;
 my $index_url = "${mirror}/modules/02packages.details.txt.gz";
+
+my $perl_version = sprintf '%d.%03d%03d', (map {ord} split('', $^V));
+my $core_modules = $Module::CoreList::version{$perl_version};
 
 unless ($ENV{HARNESS_ACTIVE}) {
     &main;
@@ -50,7 +55,7 @@ sub main {
     # warn join("\n", @libpath);
 
     my $tmpfile = File::Temp->new(UNLINK => 1, SUFFIX => '.gz');
-    getstore($index_url, $tmpfile->filename) or die "Cannot getstore file";
+    getstore($index_url, $tmpfile->filename);
 
     my $fh = zopen($tmpfile) or die "cannot open $tmpfile";
     # skip header part
@@ -63,6 +68,14 @@ sub main {
     LINES: while (my $line = <$fh>) {
         my ($pkg, $version, $dist) = split /\s+/, $line;
         next if $version eq 'undef';
+
+        # $Mail::SpamAssassin::Conf::VERSION is 'bogus'
+        # https://rt.cpan.org/Public/Bug/Display.html?id=73465
+        next unless $version =~ /[0-9]/;
+        
+        # if excluding core modules
+        next if $exclude_core && exists $core_modules->{$pkg};
+
         next if $dist =~ m{/perl-[0-9._]+\.tar\.(gz|bz2)$};
         (my $file = $pkg) =~ s!::!/!g;
         $file = "${file}.pm";
@@ -152,7 +165,19 @@ sub which {
 
 sub getstore {
     my ($url, $fname) = @_;
-    return LWP::Simple::getstore($url => $fname) == 200;
+    my $ua = LWP::UserAgent->new(
+        parse_head => 0,
+    );
+    $ua->env_proxy();
+    my $request = HTTP::Request->new(GET => $url);
+    my $response = $ua->request($request, $fname);
+    if (my $died = $response->header('X-Died')) {
+        die "Cannot getstore $url to $fname: $died";
+    } elsif ($response->code == 200) {
+        return 1;
+    } else {
+        die "Cannot getstore $url to $fname: " . $response->status_line;
+    }
 }
 
 sub zopen {

@@ -1,3 +1,13 @@
+0.22
+
+    - better error diag, reported by ssb++
+
+0.21
+
+    - Fixed: Failure if module CPAN version is 'bogus'
+      https://rt.cpan.org/Public/Bug/Display.html?id=73465
+      (Reported by dolmen)
+
 0.20
 
     - use Module::Metadata for better handling of version and package extra
