@@ -1,5 +1,5 @@
 ---
-abstract: unknown
+abstract: 'detect outdated CPAN modules in your environment'
 author:
   - unknown
 build_requires:
@@ -27,4 +27,4 @@ requires:
   local::lib: 1.006008
   perl: 5.008001
   version: 0
-version: 0.22
+version: 0.23

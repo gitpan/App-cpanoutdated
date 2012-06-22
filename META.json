@@ -1,5 +1,5 @@
 {
-   "abstract" : "unknown",
+   "abstract" : "detect outdated CPAN modules in your environment",
    "author" : [
       "unknown"
    ],
@@ -45,5 +45,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.22"
+   "version" : "0.23"
 }
