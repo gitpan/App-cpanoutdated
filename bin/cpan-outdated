@@ -14,7 +14,7 @@ use Module::CoreList ();
 use Module::Metadata;
 use constant WIN32 => $^O eq 'MSWin32';
 
-our $VERSION = "0.23";
+our $VERSION = "0.24";
 
 my $mirror = 'http://www.cpan.org/';
 my $quote = WIN32 ? q/"/ : q/'/;
@@ -42,8 +42,7 @@ pod2usage() if $help;
 $mirror =~ s:/$::;
 my $index_url = "${mirror}/modules/02packages.details.txt.gz";
 
-my $perl_version = sprintf '%d.%03d%03d', (map {ord} split('', $^V));
-my $core_modules = $Module::CoreList::version{$perl_version};
+my $core_modules = $Module::CoreList::version{$]};
 
 unless ($ENV{HARNESS_ACTIVE}) {
     &main;
